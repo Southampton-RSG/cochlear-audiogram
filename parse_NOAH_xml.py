@@ -54,6 +54,26 @@ def list_actions(patient: dict) -> List[dict]:
         raise TypeError("Patient file is malformed! Actions are not stored in a list or dictionary.")
 
 
+def list_items(entry: dict, key: str) -> List:
+    """
+    Pulls a list of sub-entries from an entry in the dictionary tree.
+    Required as xmltodict can't tell the difference between a single dict and an array dicts of size 1.
+
+    :param entry: The dictionary to extract a list from.
+    :param key: The key the sub-entries should be under.
+    :return: A list of sub-entries.
+    """
+    try:
+        items = entry[key]
+    except KeyError:
+        return []
+
+    if isinstance(items, list):
+        return items
+    else:
+        return [items]
+
+
 # Go over our input files, printing out the patients and actions
 for input_file_name in ['helentest.xml', 'pta_combined_test.xml']:
     with open(input_file_name) as input_file:
@@ -63,5 +83,20 @@ for input_file_name in ['helentest.xml', 'pta_combined_test.xml']:
         print(f'\n### Patients in {input_file_name} ###')
         for patient in patients:
             print(f'\nNumber: {patient["pt:NOAHPatientNumber"]}')
+
             for action in list_actions(patient):
                 print(f'- Action: {action["pt:TypeOfData"]}')
+
+                if action['pt:TypeOfData'] == 'Audiogram':
+                    tone_thresholds = list_items(
+                            action['pt:PublicData']['HIMSAAudiometricStandard'], 'ToneThresholdAudiogram'
+                    )
+
+                    for tone_threshold in tone_thresholds:
+                        print(
+                            f"  - {tone_threshold['AudMeasurementConditions']['StimulusSignalType']} with"
+                            f" {len(list_items(tone_threshold, 'TonePoints'))} tone points"
+                        )
+
+                    if not tone_thresholds:
+                        print("  - Audiogram has no tone threshold entries")
